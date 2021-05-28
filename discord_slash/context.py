@@ -181,6 +181,8 @@ class SlashContext:
             for comp in components:
                 if comp.get("type") != 1:
                     raise error.IncorrectFormat("The top level of the components list must be made of ActionRows!")
+            if len(components) > 5:
+                raise error.IncorrectFormat("You can only have up to 5 ActionRows!")
 
         base = {
             "content": content,
@@ -235,3 +237,85 @@ class SlashContext:
             return smsg
         else:
             return resp
+
+
+class ComponentContext:
+    def __init__(self,
+                 _http: http.SlashCommandRequest,
+                 _json: dict,
+                 _discord: typing.Union[discord.Client, commands.Bot],
+                 logger):
+        """
+        Context of a component interaction.\n
+        Similar to :class:`.SlashContext`
+
+        .. warning::
+            Do not manually init this model.
+
+        :ivar message: Message that the component is attached to.
+        :ivar custom_id: The custom_id of the component.
+        :ivar interaction_id: Interaction ID of the component message.
+        :ivar bot: discord.py client.
+        :ivar _http: :class:`.http.SlashCommandRequest` of the client.
+        :ivar _logger: Logger instance.
+        :ivar deferred: Whether the interaction is currently deferred (loading state)
+        :ivar _deferred_hidden: Internal var to check that state stays the same
+        :ivar responded: Whether you have responded with a message to the interaction.
+        :ivar guild_id: Guild ID of the command message. If the command was invoked in DM, then it is ``None``
+        :ivar author_id: User ID representing author of the command message.
+        :ivar channel_id: Channel ID representing channel of the command message.
+        :ivar author: User or Member instance of the command invoke.
+        """
+
+        self.__token = _json["token"]
+        self.message = None  # Should be set later.
+        self.custom_id = self.name = self.command = self.invoked_with = _json["data"]["custom_id"]
+        self.interaction_id = _json["id"]
+        self._http = _http
+        self.bot = _discord
+        self._logger = logger
+        self.deferred = False
+        self.responded = False
+        self._deferred_hidden = False  # To check if the patch to the deferred response matches
+        self.guild_id = int(_json["guild_id"]) if "guild_id" in _json.keys() else None
+        self.author_id = int(_json["member"]["user"]["id"] if "member" in _json.keys() else _json["user"]["id"])
+        self.channel_id = int(_json["channel_id"])
+        if self.guild:
+            self.author = discord.Member(data=_json["member"], state=self.bot._connection, guild=self.guild)
+        elif self.guild_id:
+            self.author = discord.User(data=_json["member"]["user"], state=self.bot._connection)
+        else:
+            self.author = discord.User(data=_json["user"], state=self.bot._connection)
+
+    @property
+    def guild(self) -> typing.Optional[discord.Guild]:
+        """
+        Guild instance of the component interaction. If the component was interacted with in DM, then it is ``None``
+
+        :return: Optional[discord.Guild]
+        """
+        return self.bot.get_guild(self.guild_id) if self.guild_id else None
+
+    @property
+    def channel(self) -> typing.Optional[typing.Union[discord.TextChannel, discord.DMChannel]]:
+        """
+        Channel instance of the component interaction.
+
+        :return: Optional[Union[discord.abc.GuildChannel, discord.abc.PrivateChannel]]
+        """
+        return self.bot.get_channel(self.channel_id)
+
+    async def defer(self, hidden: bool = False):
+        """
+        'Defers' the response, showing a loading state to the user
+
+        :param hidden: Whether the deferred response should be ephemeral . Default ``False``.
+        """
+        if self.deferred or self.responded:
+            raise error.AlreadyResponded("You have already responded to this interaction!")
+        base = {"type": 6}
+        if hidden:
+            base["data"] = {"flags": 64}
+            self._deferred_hidden = True
+        await self._http.post_initial_response(base, self.interaction_id, self.__token)
+        self.deferred = True

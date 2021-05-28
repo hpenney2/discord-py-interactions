@@ -1,6 +1,7 @@
 import typing
 import inspect
 import asyncio
+from random import randint
 import aiohttp
 import discord
 from ..error import RequestFailure, IncorrectType, IncorrectFormat
@@ -261,13 +262,56 @@ def create_option(name: str,
     }
 
 
+# Snagged from discord-components
+class ButtonStyle:
+    """A class containing button styles."""
+
+    blue = 1
+    gray = 2
+    grey = 2
+    green = 3
+    red = 4
+    URL = 5
+
+    @classmethod
+    def randomColor(cls) -> int:
+        """
+        Returns a random number between 1, 4
+
+        :returns: :class:`int`
+        """
+
+        return randint(1, cls.red)
+
+    @classmethod
+    def to_dict(cls) -> dict:
+        """
+        Returns a dict containing style information
+
+        :returns: :class:`dict`
+        """
+
+        return {
+            "blue": cls.blue,
+            "gray": cls.gray,
+            "green": cls.green,
+            "red": cls.red,
+            "URL": cls.URL,
+        }
+
+
 def create_actionrow(components: typing.List[dict]) -> dict:
     """
     Creates an ActionRow for message components.
 
     :param components: Components to go within the ActionRow.
-    :return: dict
+    :type components: List[dict]
+    :return: :class:`dict`
     """
+
+    # This line will almost definitely change when more components are added.
+    if len(components) > 5:
+        raise IncorrectFormat("A row can only contain 5 buttons!")
 
     return {
         "type": 1,
@@ -277,10 +321,33 @@ def create_actionrow(components: typing.List[dict]) -> dict:
 
 def create_button(style: int,
                   label: str = None,
-                  emoji: Union[discord.Emoji, dict] = None,
+                  emoji: Union[discord.Emoji, discord.PartialEmoji, dict] = None,
                   custom_id: str = None,
                   url: str = None,
                   disabled: bool = False) -> dict:
+    """
+    Creates a button component to be put inside an ActionRow (see :meth:`create_actionrow`).
+
+    .. note::
+        A label or emoji is required for a button. You can have both, but not neither.
+
+    :param style: Style of the button.
+    :type style: int
+    :param label: The label of the button.
+    :type label: str
+    :param emoji: The emoji of the button.
+    :type emoji: Union[discord.Emoji, discord.PartialEmoji, dict]
+    :param custom_id: The custom_id of the button. Required for non-link buttons.
+    :type custom_id: str
+    :param url: The URL of the button. Required for link buttons.
+    :type url: str
+    :param disabled: Whether the button is disabled or not.
+    :type disabled: bool
+    :returns: :class:`dict`
+    """
+
+    if style < 1 or style > 5:
+        raise IncorrectFormat("`style` must be between 1-5!")
     if style == 5 and custom_id:
         raise IncorrectFormat("A link button cannot have a `custom_id`!")
     if style == 5 and not url:
@@ -292,7 +359,7 @@ def create_button(style: int,
     if not label and not emoji:
         raise IncorrectFormat("You must have at least a label or emoji on a button.")
 
-    if isinstance(emoji, discord.Emoji):
+    if isinstance(emoji, discord.Emoji) or isinstance(emoji, discord.PartialEmoji):
         emoji = {"name": emoji.name, "id": emoji.id, "animated": emoji.animated}
 
     return {

@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'discord-py-slash-command'
+project = 'discord-interactions'
 copyright = '2020-2021, eunwoo1104'
 author = 'eunwoo1104'
 

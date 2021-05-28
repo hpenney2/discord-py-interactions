@@ -7,14 +7,14 @@ Welcome
 =======
 
 Hello there! Welcome to the official documentation of our library
-extension made for discord.py: being able to use Discord Slash Commands.
+extension made for discord.py: being able to use Discord Slash Commands, components, and other future interaction-based features.
 
 Before we start going into the advanced stuff, it is highly recommended
 to check out the `quickstart`_ page first from here or below in the contents.
 
 If there are any questions that you have about the documentation
 of this library extension that the docs do not currently cover over, please
-feel free to reach out to others on the `Discord`_!
+feel free to reach out to others on the `Discord`_! **Please note that the discord-py-slash-command Discord server likely will not provide support for features added by this fork.**
 
 .. _quickstart: https://discord-py-slash-command.readthedocs.io/en/latest/quickstart.html
 .. _Discord: https://discord.gg/KkgMBVuEkx

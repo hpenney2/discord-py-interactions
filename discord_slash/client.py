@@ -887,8 +887,8 @@ class SlashCommand:
 
         to_use = msg["d"]
 
-        if to_use["type"] not in (1, 2):
-            return  # to only process ack and slash-commands and exclude other interactions like buttons
+        if to_use["type"] not in (1, 2, 3):
+            return  # to only process ack, slash-commands, and components and exclude other interactions
 
         if to_use["data"]["name"] in self.commands:
 
