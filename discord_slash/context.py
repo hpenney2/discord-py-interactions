@@ -252,8 +252,8 @@ class ComponentContext:
         .. warning::
             Do not manually init this model.
 
-        :ivar message: Message that the component is attached to.
-        :ivar custom_id: The custom_id of the component.
+        :ivar message_id: Message ID that the component is attached to.
+        :ivar custom_id: The custom ID of the component.
         :ivar interaction_id: Interaction ID of the component message.
         :ivar bot: discord.py client.
         :ivar _http: :class:`.http.SlashCommandRequest` of the client.
@@ -268,7 +268,7 @@ class ComponentContext:
         """
 
         self.__token = _json["token"]
-        self.message = None  # Should be set later.
+        self.message_id = _json["message"]["id"]
         self.custom_id = self.name = self.command = self.invoked_with = _json["data"]["custom_id"]
         self.interaction_id = _json["id"]
         self._http = _http

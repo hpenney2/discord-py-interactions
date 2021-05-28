@@ -334,14 +334,14 @@ def create_button(style: int,
     :param style: Style of the button.
     :type style: int
     :param label: The label of the button.
-    :type label: str
+    :type label: Optional[str]
     :param emoji: The emoji of the button.
-    :type emoji: Union[discord.Emoji, discord.PartialEmoji, dict]
+    :type emoji: Union[discord.Emoji, discord.PartialEmoji, dict, None]
     :param custom_id: The custom_id of the button. Required for non-link buttons.
-    :type custom_id: str
+    :type custom_id: Optional[str]
     :param url: The URL of the button. Required for link buttons.
-    :type url: str
-    :param disabled: Whether the button is disabled or not.
+    :type url: Optional[str]
+    :param disabled: Whether the button is disabled or not. Defaults to `False`.
     :type disabled: bool
     :returns: :class:`dict`
     """

@@ -52,6 +52,7 @@ class SlashCommand:
         self._discord = client
         self.commands = {}
         self.subcommands = {}
+        self.buttons = {}
         self.logger = logging.getLogger("discord_slash")
         self.req = http.SlashCommandRequest(self.logger, self._discord, application_id)
         self.sync_commands = sync_commands
@@ -785,6 +786,66 @@ class SlashCommand:
 
         return wrapper
 
+    def add_button_callback(self, callback: typing.Coroutine,
+                            custom_id: str,
+                            message_ids: typing.Optional[typing.List[int]] = None):
+        """
+        Adds a coroutine callback to a button. Optionally, this can be made to only accept button presses from a specific message.
+
+        :param callback: The coroutine to be called when the button is pressed. Must accept a single argument with the type :class:`.context.ComponentContext`.
+        :type callback: Coroutine
+        :param custom_id: The `custom_id` of the button. Defaults to the name of `callback`.
+        :type custom_id: str
+        :param message_ids: If specified, only button presses from the message given will be accepted.
+        :type message_ids: Optional[List[int]]
+        :raises: .error.DuplicateCustomID
+        """
+        custom_id = custom_id or callback.__name__
+
+        if custom_id in self.buttons:
+            raise error.DuplicateCustomID(custom_id)
+        obj = model.ButtonCallbackObject(custom_id, callback, message_ids)
+        self.buttons[custom_id] = obj
+        debugMsg = f"Added button callback for `{custom_id}`" if not message_ids else \
+            f"Added message-specific button callback for `{custom_id}`"
+        self.logger.debug(debugMsg)
+
+    def button(self, custom_id: str = None, *,
+               message_id: typing.Optional[int] = None,
+               message_ids: typing.Optional[typing.List[int]] = None):
+        """
+        Decorator that registers a coroutine as a button callback.\n
+        The first argument is the `custom_id` of the button to listen for.
+        It will default to the coroutine name if unspecified.\n
+        The `message_id` keyword-only arg is optional,
+        but will make the button callback only work with a specific message if given.\n
+        Alternatively, if it needs to accept button presses from multiple specific messages, the `message_ids` arg
+        accepts a list of message IDs.
+
+        .. note::
+            `message_id` and `message_ids` cannot be used at the same time.
+
+        :param custom_id: The `custom_id` of the button. Defaults to the name of `callback`.
+        :type custom_id: str
+        :param message_id: If specified, only button presses from the message given will be accepted.
+        :type message_id: Optional[int]
+        :param message_ids: Acts like `message_id`, but accepts a list of message IDs instead.
+        :type message_ids: Optional[List[int]]
+        :raises: .error.IncorrectFormat
+        """
+        if message_id and message_ids:
+            raise error.IncorrectFormat("You cannot use both `message_id` and `message_ids`!")
+
+        def wrapper(callback):
+            if message_ids:
+                self.add_button_callback(callback, custom_id, message_ids)
+            elif message_id:
+                self.add_button_callback(callback, custom_id, [message_id])
+            else:
+                self.add_button_callback(callback, custom_id)
+
+        return wrapper
+
     async def process_options(self, guild: discord.Guild, options: list, connector: dict,
                               temporary_auto_convert: dict = None) -> dict:
         """
@@ -873,6 +934,18 @@ class SlashCommand:
         except Exception as ex:
             await self.on_slash_command_error(ctx, ex)
 
+    async def invoke_button_callback(self, func, ctx):
+        """
+        Invokes button callback.
+
+        :param func: The :class:`.model.ButtonCallbackObject` representing the button.
+        :param ctx: Context.
+        """
+        try:
+            await func.invoke(ctx)
+        except Exception as ex:
+            await self.on_slash_command_error(ctx, ex)
+
     async def on_socket_response(self, msg):
         """
         This event listener is automatically registered at initialization of this class.
@@ -890,7 +963,7 @@ class SlashCommand:
         if to_use["type"] not in (1, 2, 3):
             return  # to only process ack, slash-commands, and components and exclude other interactions
 
-        if to_use["data"]["name"] in self.commands:
+        if to_use["type"] in (1, 2) and to_use["data"]["name"] in self.commands:
 
             ctx = context.SlashContext(self.req, to_use, self._discord, self.logger)
             cmd_name = to_use["data"]["name"]
@@ -923,6 +996,17 @@ class SlashCommand:
             self._discord.dispatch("slash_command", ctx)
 
             await self.invoke_command(selected_cmd, ctx, args)
+        elif to_use["type"] == 3 and to_use["data"]["custom_id"] in self.buttons:
+            ctx = context.ComponentContext(self.req, to_use, self._discord, self.logger)
+            custom_id = to_use["data"]["custom_id"]
+            selected_button: model.ButtonCallbackObject = self.buttons[custom_id]
+
+            if selected_button.messages_ids and ctx.message_id not in selected_button.messages_ids:
+                return
+
+            self._discord.dispatch("button_call", ctx)
+
+            await self.invoke_button_callback(selected_button, ctx)
 
     async def handle_subcommand(self, ctx: context.SlashContext, data: dict):
         """

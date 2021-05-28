@@ -38,6 +38,14 @@ class DuplicateCommand(SlashCommandError):
         super().__init__(f"Duplicate command name detected: {name}")
 
 
+class DuplicateCustomID(SlashCommandError):
+    """
+    There is a duplicate button custom ID.
+    """
+    def __init__(self, custom_id: str):
+        super().__init__(f"Duplicate button custom_id detected: {custom_id}")
+
+
 class DuplicateSlashClient(SlashCommandError):
     """
     There are duplicate :class:`.SlashCommand` instances.
