@@ -4,15 +4,16 @@
     <h2 align = "center">A fork of <a href="https://github.com/eunwoo1104/discord-py-slash-command">discord-py-slash-command</a></h2>
 </p>
 <p align="center">
-        <a href="https://app.codacy.com/gh/eunwoo1104/discord-py-slash-command?utm_source=github.com&utm_medium=referral&utm_content=eunwoo1104/discord-py-slash-command&utm_campaign=Badge_Grade_Settings"><img src="https://api.codacy.com/project/badge/Grade/224bdbe58f8f43f28a093a33a7546456" alt="Codacy Badge"></a>
-        <a href="https://discord.gg/KkgMBVuEkx"> <img alt="Discord" src="https://img.shields.io/discord/789032594456576001"></a>
+        <a href='https://discord-py-interactions.readthedocs.io/en/latest/?badge=latest'>
+            <img src='https://readthedocs.org/projects/discord-py-interactions/badge/?version=latest' alt='Documentation Status' />
+        </a>
 </p>
 <p align="center">
    <a href="#about">About</a> ⦿
    <a href="#installation">Installation</a> ⦿
    <a href="#examples">Examples</a> ⦿
-   <a href="https://discord-py-slash-command.readthedocs.io/en/latest/">Documentation</a> ⦿
-   <a href="https://discord.gg/KkgMBVuEkx">Discord Server</a>
+   <a href="https://discord-py-interactions.readthedocs.io/en/latest/">Documentation</a> <!---⦿
+   <a href="https://discord.gg/KkgMBVuEkx">Discord Server</a> -->
 </p>
    
 ## About
