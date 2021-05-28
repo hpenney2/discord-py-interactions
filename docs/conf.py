@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.abspath('..'))
 
 project = 'discord-interactions'
 copyright = '2020-2021, eunwoo1104'
-author = 'eunwoo1104'
+author = 'eunwoo1104, fork by hpenney2'
 
 
 # -- General configuration ---------------------------------------------------
