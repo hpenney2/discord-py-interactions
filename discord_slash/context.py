@@ -268,7 +268,7 @@ class ComponentContext:
         """
 
         self.__token = _json["token"]
-        self.message_id = _json["message"]["id"]
+        self.message_id = int(_json["message"]["id"])
         self.custom_id = self.name = self.command = self.invoked_with = _json["data"]["custom_id"]
         self.interaction_id = _json["id"]
         self._http = _http

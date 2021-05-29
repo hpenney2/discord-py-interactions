@@ -344,12 +344,10 @@ class ButtonCallbackObject:
 
     :ivar custom_id: Custom ID of the button.
     :ivar func: The callback coroutine of the button.
-    :ivar message_ids: List of allowed message IDs. If `None`, button presses from all messages will be accepted.
     """
-    def __init__(self, custom_id, func, message_ids):
+    def __init__(self, custom_id, func):
         self.custom_id = custom_id
         self.func = func
-        self.messages_ids = message_ids
 
     async def invoke(self, ctx):
         """
@@ -358,6 +356,32 @@ class ButtonCallbackObject:
         :param ctx: The :class:`.context.ComponentContext` for the interaction.
         """
         return await self.func(ctx)
+
+
+class MsgSpecificButtonCallbackObject:
+    """
+    Internal button object for message-specifc buttons.
+
+    .. warning::
+        Do not manually init this model.
+
+    :ivar custom_id: Custom ID of the button.
+    :ivar funcs: A dict with message IDs as keys and callback coroutines as values.
+    """
+    def __init__(self, custom_id, funcs):
+        self.custom_id = custom_id
+        self.funcs = funcs
+
+    async def invoke(self, ctx):
+        """
+        Invokes the button callback.
+
+        :param ctx: The :class:`.context.ComponentContext` for the interaction.
+        """
+        coro = self.funcs.get(ctx.message_id)
+        if not coro:
+            raise error.IncorrectCommandData("Bad message ID given to MsgSpecificButtonCallbackObject")
+        return await coro(ctx)
 
 
 class SlashCommandOptionType(IntEnum):

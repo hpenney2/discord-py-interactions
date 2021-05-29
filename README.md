@@ -28,9 +28,9 @@ slash command handler library to be made for Discord Bot API libraries.
 interaction-based features, including message components like buttons, within your bot.
 
 ## Installation
-You are able to easily install the *discord-py-interactions* library by using the given PIP line below:
+**This fork is not available on PyPI yet.** For now, you can install it using Git:
 
-`pip install -U discord-py-interactions`
+`pip install -U git+https://github.com/hpenney2/discord-py-interactions.git`
 
 ## Examples
 ### Quick Startup

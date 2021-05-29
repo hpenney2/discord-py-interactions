@@ -53,6 +53,7 @@ class SlashCommand:
         self.commands = {}
         self.subcommands = {}
         self.buttons = {}
+        self.msg_buttons = {}
         self.logger = logging.getLogger("discord_slash")
         self.req = http.SlashCommandRequest(self.logger, self._discord, application_id)
         self.sync_commands = sync_commands
@@ -787,8 +788,8 @@ class SlashCommand:
         return wrapper
 
     def add_button_callback(self, callback: typing.Coroutine,
-                            custom_id: str,
-                            message_ids: typing.Optional[typing.List[int]] = None):
+                            custom_id: str = None,
+                            message_id: typing.Optional[int] = None):
         """
         Adds a coroutine callback to a button. Optionally, this can be made to only accept button presses from a specific message.
 
@@ -796,19 +797,58 @@ class SlashCommand:
         :type callback: Coroutine
         :param custom_id: The `custom_id` of the button. Defaults to the name of `callback`.
         :type custom_id: str
-        :param message_ids: If specified, only button presses from the message given will be accepted.
-        :type message_ids: Optional[List[int]]
+        :param message_id: If specified, only button presses from the message given will be accepted.
+        :type message_id: Optional[int]
         :raises: .error.DuplicateCustomID
         """
         custom_id = custom_id or callback.__name__
 
-        if custom_id in self.buttons:
-            raise error.DuplicateCustomID(custom_id)
-        obj = model.ButtonCallbackObject(custom_id, callback, message_ids)
-        self.buttons[custom_id] = obj
-        debugMsg = f"Added button callback for `{custom_id}`" if not message_ids else \
-            f"Added message-specific button callback for `{custom_id}`"
-        self.logger.debug(debugMsg)
+        if message_id:
+            if custom_id in self.msg_buttons and self.msg_buttons[custom_id].funcs.get(message_id):
+                raise error.DuplicateCustomID(custom_id)
+            elif custom_id in self.msg_buttons:
+                obj = self.msg_buttons[custom_id]
+                obj.funcs[message_id] = callback
+                print(obj.funcs)
+            else:
+                obj = model.MsgSpecificButtonCallbackObject(custom_id, {message_id: callback})
+                self.msg_buttons[custom_id] = obj
+                print(obj.funcs)
+
+            self.logger.debug(f"Added message-specific button callback for `{custom_id}`, message ID {message_id}")
+        else:
+            if custom_id in self.buttons:
+                raise error.DuplicateCustomID(custom_id)
+            obj = model.ButtonCallbackObject(custom_id, callback)
+            self.buttons[custom_id] = obj
+            self.logger.debug(f"Added button callback for `{custom_id}`")
+
+        return obj
+
+    def remove_button_callback(self, custom_id: str, message_id: typing.Optional[int] = None):
+        """
+        Removes a button callback. If the `message_id` is specified, removes the callback for the specific message ID.
+
+        :param custom_id: The `custom_id` of the button.
+        :type custom_id: str
+        :param message_id: If specified, only button presses from the message given will be accepted.
+        :type message_id: Optional[int]
+        :raises: .error.IncorrectFormat
+        """
+        if message_id:
+            if custom_id in self.msg_buttons and self.msg_buttons[custom_id].funcs.get(message_id):
+                del self.msg_buttons[custom_id].funcs[message_id]
+                if len(self.msg_buttons[custom_id].funcs) == 0:
+                    del self.msg_buttons[custom_id]
+            elif custom_id in self.msg_buttons:
+                raise error.IncorrectFormat(f"Message ID `{message_id}` is not registered to custom ID `{custom_id}`!")
+            else:
+                raise error.IncorrectFormat(f"Custom ID `{custom_id}` is not registered as a message-specific button!")
+        else:
+            if custom_id in self.buttons:
+                del self.buttons[custom_id]
+            else:
+                raise error.IncorrectFormat(f"Custom ID `{custom_id}` is not registered as a button!")
 
     def button(self, custom_id: str = None, *,
                message_id: typing.Optional[int] = None,
@@ -838,9 +878,10 @@ class SlashCommand:
 
         def wrapper(callback):
             if message_ids:
-                self.add_button_callback(callback, custom_id, message_ids)
+                for msg in message_ids:
+                    self.add_button_callback(callback, custom_id, msg)
             elif message_id:
-                self.add_button_callback(callback, custom_id, [message_id])
+                self.add_button_callback(callback, custom_id, message_id)
             else:
                 self.add_button_callback(callback, custom_id)
 
@@ -955,6 +996,12 @@ class SlashCommand:
 
         :param msg: Gateway message.
         """
+        self.logger.debug(self.buttons)
+        self.logger.debug(self.msg_buttons)
+        for key, but in self.msg_buttons.items():
+            self.logger.debug(f"{key} funcs:")
+            self.logger.debug(but.funcs)
+
         if msg["t"] != "INTERACTION_CREATE":
             return
 
@@ -996,12 +1043,22 @@ class SlashCommand:
             self._discord.dispatch("slash_command", ctx)
 
             await self.invoke_command(selected_cmd, ctx, args)
-        elif to_use["type"] == 3 and to_use["data"]["custom_id"] in self.buttons:
+        elif to_use["type"] == 3 and to_use["data"]["custom_id"] in self.buttons \
+                or (to_use["data"]["custom_id"] in self.msg_buttons and
+                    self.msg_buttons[to_use["data"]["custom_id"]].funcs.get(int(to_use["message"]["id"]))):
             ctx = context.ComponentContext(self.req, to_use, self._discord, self.logger)
             custom_id = to_use["data"]["custom_id"]
-            selected_button: model.ButtonCallbackObject = self.buttons[custom_id]
 
-            if selected_button.messages_ids and ctx.message_id not in selected_button.messages_ids:
+            # self.logger.debug(f"Attempting to handle button press; custom ID `{custom_id}`, message id `{ctx.message_id}`")
+
+            if custom_id in self.msg_buttons and self.msg_buttons[custom_id].funcs.get(ctx.message_id):
+                # self.logger.debug("Selected message-specific button from table")
+                selected_button = self.msg_buttons[custom_id]
+            elif custom_id in self.buttons:
+                # self.logger.debug("Selected ambiguous button from table")
+                selected_button = self.buttons[custom_id]
+            else:
+                self.logger.debug("Failed to select a button (this shouldn't happen?)")
                 return
 
             self._discord.dispatch("button_call", ctx)
